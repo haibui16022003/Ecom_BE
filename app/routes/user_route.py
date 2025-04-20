@@ -15,9 +15,35 @@ def get_All_users(db: Session = Depends(get_db)):
 
 @router.post("/", response_model=UserResponse)
 def create_user(user: UserCreate, db: Session = Depends(get_db)):
+    # JSON Error check
+    # Role and rolecode validation
+    if (user.rolecode != "ad" and user.rolecode != "us"):
+        raise HTTPException(status_code=400, detail="Role code must be 'ad' or 'us'")
+    if(user.rolecode == "ad" and user.role != "admin"):
+        raise HTTPException(status_code=400, detail="Role must be 'admin' with role code 'ad'")
+    if (user.rolecode == "us" and user.role != "user"):
+        raise HTTPException(status_code=400, detail="Role must be 'user' with role code 'us'")
+    # phone number validation
+    if len(user.phone) != 10 or not user.phone.isdigit():
+        raise HTTPException(status_code=400, detail="Phone number must be 10 digits")
+    if user.phone[0] != "0":
+        raise HTTPException(status_code=400, detail="Phone number must start with 0")
+    if user.phone[1] != "9" and user.phone[1] != "8" and user.phone[1] != "7" and user.phone[1] != "6" and user.phone[1] != "5" and user.phone[1] != "4" and user.phone[1] != "3" and user.phone[1] != "2":
+        raise HTTPException(status_code=400, detail="Phone number must start with 09, 08, 07, 06, 05, 04, 03, 02")
+    # password validation
+    if len(user.password) < 6:
+        raise HTTPException(status_code=400, detail="Password must be at least 6 characters")
+    
+    # Check if user already exists
     db_user = db.query(Users).filter(Users.username == user.username).first()
     if db_user:
-        raise HTTPException(status_code=400, detail="Username already exists")
+        raise HTTPException(status_code=400, detail="This username already exists")
+    db_user = db.query(Users).filter(Users.email == user.email).first()
+    # if db_user:
+    #     raise HTTPException(status_code=400, detail="This email already exists")
+    db_user = db.query(Users).filter(Users.phone == user.phone).first()
+    if db_user:
+        raise HTTPException(status_code=400, detail="This phone number already exists")
     try:
         new_user = Users(**user.dict())
         db.add(new_user)
